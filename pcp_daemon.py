@@ -20,19 +20,28 @@ def check_for_cdn(addr):
 	else:
 		return False
 
+def get_public_ip():
+  public_ip = urllib2.urlopen('http://ip.42.pl/raw').read()
+  return public_ip
+
+
 def main():
   pid = os.getpid()
   with open("/tmp/pcp_daemon.txt", "w+") as f:
     f.write(str(pid))
 
+  public_ip = get_public_ip() #get our public ip
+
   print "We require that you choose a network interface and ip for the tshark to monitor \n"
   ifconfig = raw_input("Run 'ifconfig' to identify valid network interface and ip? (y/n)")
   if ifconfig == "y":
     print os.popen("ifconfig").read()
-  local_ip = raw_input("Enter IP: ")
-  local_interface = raw_input("Enter Network Interface: ")
+  local_interface = raw_input("Enter your Network Interface: ")
+  local_ip = raw_input("Enter your IP (inet addr of the interface you chose): ")
   tshark_command = "sudo tshark -Y 'ip.dst=="+local_ip+" and tcp.analysis.ack_rtt > 0.0' -Tfields -E header=n -e ip.src -e ip.dst -e tcp.analysis.ack_rtt -i "+local_interface+" -c 100"
-  print tshark_command
+  # print tshark_command
+  print "Using interface: "+str(local_interface)+", private ip: "+str(local_ip)+", and public ip: "+str(public_ip)
+  print "Running tshark requires sudo permissions, please enter password:"
   sudo_pass = getpass.getpass()
   while True:
     try:
@@ -46,12 +55,13 @@ def main():
         split_l = l.split("\t")
         s_addr = split_l[0]
         d_addr = split_l[1] #our address
+        
         rtt = split_l[2]
         if check_for_cdn(s_addr):
-          full_url = "http://nl.cs.montana.edu/pcp/save_measurements.php?user_ip="+d_addr+"&cdn_ip="+s_addr+"&rtt="+rtt
+          full_url = "http://nl.cs.montana.edu/pcp/save_measurements.php?user_ip="+public_ip+"&cdn_ip="+s_addr+"&rtt="+rtt
           data = urllib2.urlopen(full_url)
           print data.read()
-          print "CDN FOUND: "+str(s_addr)+" with latency: "+str(rtt)+" and stored in Database"
+          print "CDN FOUND: "+str(s_addr)+" with latency: "+str(rtt)+" and stored in Database with public IP: "+str(public_ip)
       print "\n\n"
     except Exception,e:
       print "Something went wrong: "+str(e)

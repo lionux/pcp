@@ -9,6 +9,7 @@ def check_for_daemon():
     return False
   return True
 
+
 def main():
   print ".----------------------------------------------------."
   print " .--------------.  .--------------.  .--------------. "
